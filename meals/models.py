@@ -2,12 +2,10 @@ from django.db import models
 from .static.meals.constants import *
 from datetime import date
 
+
 # Create your models here.
 
 # ------------------  Food - Aliment  --------------------
-
-
-
 
 class Food(models.Model):
 	name = models.CharField('nom', max_length=100, unique=True)

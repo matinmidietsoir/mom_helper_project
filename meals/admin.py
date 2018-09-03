@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django import forms
+from django.forms import ModelMultipleChoiceField
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from .models import Food, Recipe, Ingredient, Meal, Provision, Supplier, Shopping, ListElement
 from .static.meals.constants import *
 #from django.core.exceptions import DoesNotExist #pas besoin
@@ -9,9 +12,22 @@ from django.forms.models import ModelForm
 from django.contrib.admin.widgets import AdminDateWidget
 from django.forms.fields import DateField
 
-# todo général : il faudrait gérer les affichages de dates (nom du jour)
+from admin_extend.extend import extend_registered, add_bidirectional_m2m, registered_form
+
+
+# admin.py
 
 # ------------------  Food - Aliment  --------------------
+
+class ListElementsForFoodInline(admin.TabularInline):
+    model = ListElement
+    
+
+class ProvisionsForFoodInline(admin.TabularInline):
+    model = Provision
+    # attention il faudrait filtrer seulement les repas autour de la date d'aujourd'hui
+    # ou ceux pour lesquels il y a eu des courses de faites qui étaient des courses pour au moins un repas de la date d'aujourd'hui.
+    # et les afficher de façon plus sexy pour qu'on sachent au moins si le repas est passé au non. 
 
 class FoodAdmin(admin.ModelAdmin):
 	#affichage de la liste
@@ -22,9 +38,24 @@ class FoodAdmin(admin.ModelAdmin):
 	list_filter    = ('category',) #'shelf_life',) ça fait planter avec shelf_life..
 
 	#affichage du détail
-	filter_horizontal = ('suppliers',) # todo : pourquoi ça n'affiche rien ? j'aimerais avoir les fournisseurs dans les aliments
+#	filter_horizontal = ('provision',) 
+	inlines = [ProvisionsForFoodInline, ListElementsForFoodInline] # list of aliments
+
 
 admin.site.register(Food, FoodAdmin)
+
+@extend_registered
+class ExtendedFoodAdminForm(add_bidirectional_m2m(registered_form(Food))):
+
+    suppliers = ModelMultipleChoiceField(
+        queryset=Supplier.objects.all(),
+        widget=FilteredSelectMultiple('fournisseurs',False)
+    )
+
+    def _get_bidirectional_m2m_fields(self):
+        return super(ExtendedFoodAdminForm, self).\
+            _get_bidirectional_m2m_fields() + [('suppliers', 'suppliers')]
+
 
 # ------------------  Recipe - recette --------------------
 
@@ -149,9 +180,7 @@ admin.site.register(Supplier)
 
 class ListElementsInline(admin.TabularInline):
     model = ListElement
-    #ici il faudrait pouvoir mettre des détails sur 
-    # - les courses où ça a été acheté
-    # - 
+
 
 #definir un formulaire #pas utile ici c'est pour garder en mémoire cette possibilité
 class MyModelForm(ModelForm):
